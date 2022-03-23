@@ -5,46 +5,78 @@ import os
 #QOL
 from natsort import natsorted
 
-print("Select person to catagorize:")
-known_image = fr.load_image_file(filedialog.askopenfilename(title="Select image", filetypes=(("jpeg files", "*.jpg"), ("PNG files", "*.png*"), ("all files", "*.*"))))
-known_encoding = fr.face_encodings(known_image)[0]
-name = input("Name of person in image:\n").title()
-
-print("select folder to compare against:")
-folder = filedialog.askdirectory(title="Select folder", mustexist=True)
+print("Select folder of reference pictures:")
+reference_dir = filedialog.askdirectory(title="Select folder", mustexist=True)
+print(reference_dir)
+known_images = natsorted(os.listdir(reference_dir))
 
 
-files = natsorted(os.listdir(folder), key=lambda y: y.lower())
-filenum = 1
+named_encodings = {}
+loading_progress = 0
 
-
-for file in files:
-    if not "." in file or file.split(".")[1] not in ["jpg", "jpeg", "png", "webp"]:
+for i in known_images:  #load and encode all known images
+    if not "." in i or i.split(".")[1] not in ["jpg", "jpeg", "png", "webp"]:
         continue
+    name = (i.split(".")[0]).title()
+    loaded_image = fr.load_image_file(reference_dir + "/" + i)
+    known_encoding = fr.face_encodings(loaded_image)
+    named_encodings[name] = known_encoding
+    loading_progress += 1
+    print(f"{loading_progress}/{len(known_images)} images loaded\r", end="")
 
-    print(file)
-    file_path = os.path.join(folder + "/", file)
+
+
+print("select folder to compare against reference:")
+comparison_dir = filedialog.askdirectory(title="Select folder", mustexist=True)
+print(comparison_dir)
+files_to_compare = natsorted(os.listdir(comparison_dir), key=lambda y: y.lower())
+
+catagorize_progress = 0
+num_of_catagorized_faces = 0
+for file in files_to_compare:
+    if not "." in file or file.split(".")[1] not in ["jpg", "jpeg", "png", "webp"]: #if not image file
+        continue
+    
+    # print(f"Scanning {file}...")
+    file_path = comparison_dir + "/" + file
     unknown_image = fr.load_image_file(file_path)
     unknown_encodings = fr.face_encodings(unknown_image)
+    recognized_people = []
 
     if unknown_encodings:
-        num_of_faces_in_image = len(unknown_encodings)
-        for face in unknown_encodings:
-            same_person = fr.compare_faces([known_encoding], unknown_encodings[num_of_faces_in_image - 1], tolerance=0.55)
-            num_of_faces_in_image -= 1
-            if same_person[0]:
-                print(f"This is {name}.")
-                os.rename(file_path, folder + "/" + name + " " + str(filenum) + "." + file.split(".")[1])
-                filenum += 1
+        unchecked_faces = len(unknown_encodings)
+        # print(f"{unchecked_faces} face(s) found in image")
+
+        for name in named_encodings: #for each person in the database
+            if unchecked_faces < 1: #if all faces im image have been checked
                 break
+            same_person = fr.compare_faces(named_encodings[name][0], unknown_encodings, tolerance=0.57) #lower is more precise
+            if any(same_person): #if any of the faces in image match any person in the database
+                # print(f"Found {name}.\n")
+                recognized_people.append(name) #add name to list of recognized people in image
+                unchecked_faces -= 1
+            
 
-            else:
-                print("This is a different person.")
-
+        
+        if recognized_people:
+            recognized_people = str(recognized_people).strip("[]'").replace("'", "")
+            for i in range(len(files_to_compare)):
+                try:
+                    os.rename(file_path, f"{comparison_dir}/{recognized_people} {i+1}.{file.split('.')[1]}")
+                    break
+                except FileExistsError:
+                    pass
+            num_of_catagorized_faces += 1
+                 
     else:
-        print("No faces detected in image.")
+        pass
+        # print("No faces detected in image.")
+    
+    catagorize_progress += 1
+    print(f"{catagorize_progress}/{len(files_to_compare)} images catagorized.\r", end="")
+    
 
-print(f"Done catagorizing files. Found {filenum -1} identical faces.")
+print(f"Done catagorizing files. Found {num_of_catagorized_faces} matching faces.")
             
 
 
