@@ -10,9 +10,14 @@ reference_dir = filedialog.askdirectory(title="Select folder", mustexist=True)
 print(reference_dir)
 known_images = natsorted(os.listdir(reference_dir))
 
+print("select folder to compare against reference:")
+comparison_dir = filedialog.askdirectory(title="Select folder", mustexist=True)
+print(comparison_dir)
+files_to_compare = natsorted(os.listdir(comparison_dir), key=lambda y: y.lower())
+
 
 named_encodings = {}
-loading_progress = 0
+loading_progress = 1
 
 for i in known_images:  #load and encode all known images
     if not "." in i or i.split(".")[1] not in ["jpg", "jpeg", "png", "webp"]:
@@ -22,21 +27,14 @@ for i in known_images:  #load and encode all known images
     known_encoding = fr.face_encodings(loaded_image)
     named_encodings[name] = known_encoding
     loading_progress += 1
-    print(f"{loading_progress}/{len(known_images)} images loaded\r", end="")
+    print(f"{loading_progress}/{len(known_images)} ({round(loading_progress / len(known_images) * 100)}%) reference images loaded.\r", end="")
 
-
-
-print("select folder to compare against reference:")
-comparison_dir = filedialog.askdirectory(title="Select folder", mustexist=True)
-print(comparison_dir)
-files_to_compare = natsorted(os.listdir(comparison_dir), key=lambda y: y.lower())
-
-catagorize_progress = 0
+print("")
+catagorize_progress = 1
 num_of_catagorized_faces = 0
 for file in files_to_compare:
     if not "." in file or file.split(".")[1] not in ["jpg", "jpeg", "png", "webp"]: #if not image file
         continue
-    
     # print(f"Scanning {file}...")
     file_path = comparison_dir + "/" + file
     unknown_image = fr.load_image_file(file_path)
@@ -48,7 +46,7 @@ for file in files_to_compare:
         # print(f"{unchecked_faces} face(s) found in image")
 
         for name in named_encodings: #for each person in the database
-            if unchecked_faces < 1: #if all faces im image have been checked
+            if unchecked_faces == 0: #if all faces in image have been checked
                 break
             same_person = fr.compare_faces(named_encodings[name][0], unknown_encodings, tolerance=0.57) #lower is more precise
             if any(same_person): #if any of the faces in image match any person in the database
@@ -57,26 +55,26 @@ for file in files_to_compare:
                 unchecked_faces -= 1
             
 
-        
         if recognized_people:
             recognized_people = str(recognized_people).strip("[]'").replace("'", "")
-            for i in range(len(files_to_compare)):
+            for i in range(len(files_to_compare)):  #TODO: the more files there are to check, the less efficient this is. find a better way to do this.
                 try:
-                    os.rename(file_path, f"{comparison_dir}/{recognized_people} {i+1}.{file.split('.')[1]}")
+                    os.rename(file_path, f"{comparison_dir}/{recognized_people} {i+1}{os.path.splitext(file)[1]}")
                     break
                 except FileExistsError:
                     pass
             num_of_catagorized_faces += 1
-                 
+                
     else:
         pass
         # print("No faces detected in image.")
+
     
     catagorize_progress += 1
-    print(f"{catagorize_progress}/{len(files_to_compare)} images catagorized.\r", end="")
+    print(f"{catagorize_progress}/{len(files_to_compare)} ({round(catagorize_progress / len(files_to_compare) * 100)}%) files proscessed.\r", end="")
     
 
-print(f"Done catagorizing files. Found {num_of_catagorized_faces} matching faces.")
+print(f"\nDone catagorizing files. Found {num_of_catagorized_faces} matching faces.")
             
 
 
