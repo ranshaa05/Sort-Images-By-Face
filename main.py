@@ -25,6 +25,10 @@ for i in known_images:  #load and encode all known images
     name = (i.split(".")[0]).title()
     loaded_image = fr.load_image_file(reference_dir + "/" + i)
     known_encoding = fr.face_encodings(loaded_image)
+    if len(known_encoding) >1:
+        print(f"File '{i}' has multiple faces in it. Please use a different file with only one face.")
+        exit()
+        
     named_encodings[name] = known_encoding
     loading_progress += 1
     print(f"{loading_progress}/{len(known_images)} ({round(loading_progress / len(known_images) * 100)}%) reference images loaded.\r", end="")
