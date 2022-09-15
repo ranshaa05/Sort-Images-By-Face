@@ -12,6 +12,6 @@ class Renamer:
             name = str(name).strip("[]'")
             if not name in self.filenum:
                 self.filenum[name] = 1
-            while os.path.isfile(directory + "/" + str(name).strip("[]'").replace("'", "") + " (" + str(self.filenum[name]) + ")." + file.split(".")[1]):
+            while os.path.isfile(directory + "/" + str(name).strip("[]'").replace("'", "") + " (" + str(self.filenum[name]) + ")." + file.rsplit(".", 1)[1]):
                 self.filenum[name] += 1
-            os.rename(directory + "/" + file, directory + "/" + str(name).strip("[]'").replace("'", "") + " (" + str(self.filenum[name]) + ")." + file.split(".")[1])
+            os.rename(directory + "/" + file, directory + "/" + str(name).strip("[]'").replace("'", "") + " (" + str(self.filenum[name]) + ")." + file.rsplit(".", 1)[1])

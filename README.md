@@ -13,4 +13,6 @@ A python script to catagorize a batch of image files by the faces in them.
 - Now select the folder with the files you want to catagorize.
 - Wait for it to complete catagorizing.
 
+*installing dlib with AVX instructions and/or CUDA functionality is strongly recommended.
+
 **Results may be inaccurate. If you want more accurate results, lower the tolerance value of the "same_person" variable.*

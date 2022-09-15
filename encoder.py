@@ -15,9 +15,8 @@ class Encoder:
     def get_path(self, title, text):
         print(text)
         dir = filedialog.askdirectory(title=title, mustexist=True)
-        while dir == "":
-            print("Please select a valid directory.")
-            dir = filedialog.askdirectory(title=title, mustexist=True)
+        if dir == "":
+            exit("No directory selected. Exiting...")
         print(dir)
         return dir
 
@@ -29,14 +28,16 @@ class Encoder:
             encoded_faces = fr.face_encodings(loaded_image)
             self.loading_progress += 1
             print(f"Encoding {reference_or_comparison} images... {self.loading_progress}/{len(files_to_encode)} ({round(self.loading_progress / len(files_to_encode) * 100)}%) images encoded.\r", end="")
-            if reference_or_comparison == "reference":
-                name = (file.split(".")[0]).title()
-                if self.check_reference_picture_validity(encoded_faces, file, name):
+            if self.check_reference_picture_validity(encoded_faces, file, reference_or_comparison):
+                if reference_or_comparison == "comparison":
+                    self.encoded_comparison_images[file] = encoded_faces #assign comparison file's name to its encoded faces
+
+                elif reference_or_comparison == "reference":
+                    name = (file.split(".")[0]).title()
                     self.encoded_reference_images[name] = encoded_faces #assign person's name to reference picture
-            elif reference_or_comparison == "comparison":
-                self.encoded_comparison_images[file] = encoded_faces #assign filename to its encoded faces
-            else:
-                raise Exception("Invalid reference_or_comparison argument.")
+                
+                else:
+                    raise Exception("Invalid reference_or_comparison argument.")
 
         self.loading_progress = 0
         if reference_or_comparison == "reference":
@@ -47,16 +48,27 @@ class Encoder:
             raise Exception("Invalid reference_or_comparison argument.")
         
 
-    def check_reference_picture_validity(self, encoded_faces, filename, name):
-        if len(encoded_faces) > 1:
-            raise Exception("Multiple faces detected in '" + filename + ".' Please use a different file with only one face.")
-        
-        if len(encoded_faces) == 1:
-            return True
-        else:
-            input(f"Could not find a face in file '{filename}'. Press enter to continue.")
-            return
+    def check_reference_picture_validity(self, encoded_faces, filename, reference_or_comparison):
+        if reference_or_comparison == "comparison":
+            if len(encoded_faces) > 0:
+                return True
+            else:
+                return False
 
+        elif reference_or_comparison == "reference":
+            if  len(encoded_faces) == 1:
+                return True
+            elif len(encoded_faces) > 1:
+                raise Exception("Multiple faces detected in '" + filename + ".' Please use a different file with only one face.")
+        
+            else:
+                input(f"Could not find a face in file '{filename}'. Press enter to continue.")
+                return
+        else:
+            raise Exception("Invalid reference_or_comparison argument.")
+        
+        
+        
 
 
 
