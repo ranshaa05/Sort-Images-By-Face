@@ -1,4 +1,7 @@
 import os
+from multiprocessing import Pool
+import numpy as np
+from tkinter import filedialog
 
 import encoder
 import comparator
@@ -9,19 +12,49 @@ from natsort import natsorted
 
 
 def main():
-    enc = encoder.Encoder()
-    reference_images = natsorted(os.listdir(enc.reference_dir), key=lambda y: y.lower())
-    reference_encodings = enc.encode(enc.reference_dir, reference_images, "reference")    #these are referenced by name in the code
+    thread_count = os.cpu_count() // 2
+    reference_dir = get_path("Select reference folder", "Select the folder containing the reference images.")
+    comparison_dir = get_path("Select comparison folder", "Select the folder containing the images to be compared.")
 
-    images_to_compare = natsorted(os.listdir(enc.comparison_dir), key=lambda y: y.lower())
-    comparison_encodings = enc.encode(enc.comparison_dir, images_to_compare, "comparison")    #these are referenced by filemane in the code
+    enc = encoder.Encoder()
+    reference_images = natsorted(os.listdir(reference_dir), key=lambda y: y.lower())
+
+
+    chunks = np.array_split(reference_images, thread_count)
+    with Pool(thread_count) as p:
+        reference_encodings = p.starmap(enc.encode_faces, [(reference_dir, chunk, "reference") for chunk in chunks])
+    p.close()
+    
+
+
+    images_to_compare = natsorted(os.listdir(comparison_dir), key=lambda y: y.lower())
+
+    
+    chunks = np.array_split(images_to_compare, thread_count)
+    with Pool(thread_count) as p:
+        comparison_encodings = p.starmap(enc.encode_faces, [(comparison_dir, chunk, "comparison") for chunk in chunks])
+
+    
+
 
     comp = comparator.Comparator()
     ren = Renamer.Renamer()
-    ren.rename(enc.comparison_dir, comp.compare(comparison_encodings, reference_encodings))
+    #make comparison_encodings and reference_encodings into dicts of {filename: encoding} and {name: encoding} respectively.
+    comparison_encodings = {k: v for d in comparison_encodings for k, v in d.items()}
+    reference_encodings = {k: v for d in reference_encodings for k, v in d.items()}
 
-            
+    ren.rename(comparison_dir, comp.compare(comparison_encodings, reference_encodings))
 
 
 
-main()
+def get_path(title, text):
+    print(text)
+    dir = filedialog.askdirectory(title=title, mustexist=True)
+    if dir == "":
+        exit("No directory selected. Exiting...")
+    print(dir)
+    return dir
+
+
+if __name__ == '__main__':
+    main()
